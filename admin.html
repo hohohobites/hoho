@@ -1,3 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mocho Bites — Admin Order Queue</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg-cream: #fff6fa;
+      --card-bg: #ffffff;
+      --pink-primary: #ff5c93;
+      --pink-soft: #ffe3ee;
+      --choco-dark: #4a2c2a;
+      --text-muted: #7c5c5a;
+      --pandan-green: #16a34a;
+      --border-soft: #f7cde0;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Quicksand', sans-serif;
+      background: var(--bg-cream);
+      color: var(--choco-dark);
+      min-height: 100vh;
+      padding: 20px 16px 48px;
+    }
+
+    .container {
+      max-width: 920px;
+      margin: 0 auto;
+    }
+
+    .hidden { display: none !important; }
+
+    header {
+      text-align: center;
+      margin-bottom: 22px;
+    }
+
+    header h1 {
+      font-family: 'Fredoka', sans-serif;
+      font-size: 1.75rem;
+      color: var(--choco-dark);
+    }
+
+    header p {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    .login-card {
+      max-width: 400px;
+      margin: 40px auto;
+      background: var(--card-bg);
+      border: 2px solid var(--border-soft);
+      border-radius: 24px;
+      padding: 28px 24px;
+      box-shadow: 0 10px 25px rgba(255, 92, 147, 0.08);
+    }
+
+    .login-card h2 {
+      font-family: 'Fredoka', sans-serif;
+      font-size: 1.35rem;
+      margin-bottom: 6px;
+      text-align: center;
+    }
+
+    .login-card p {
+      font-size: 0.88rem;
+      color: var(--text-muted);
+      text-align: center;
+      margin-bottom: 18px;
+    }
+
+    input[type="password"] {
+      width: 100%;
+      padding: 12px 14px;
+      border-radius: 14px;
+      border: 2px solid var(--border-soft);
+      font-family: inherit;
+      font-size: 1rem;
+      margin-bottom: 14px;
+      outline: none;
+    }
+
+    input[type="password"]:focus {
+      border-color: var(--pink-primary);
+    }
+
+    .primary-btn {
+      width: 100%;
+      padding: 12px 16px;
+      border: none;
+      border-radius: 14px;
+      background: var(--pink-primary);
+      color: #fff;
+      font-family: 'Fredoka', sans-serif;
+      font-size: 1rem;
+      cursor: pointer;
+    }
+
+    .error-box {
+      background: #fee2e2;
+      color: #b91c1c;
+      padding: 10px 12px;
+      border-radius: 12px;
+      font-size: 0.86rem;
+      font-weight: 700;
+      margin-bottom: 12px;
+      text-align: center;
+    }
+
+    .top-bar {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .top-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .pill-btn {
+      padding: 8px 14px;
+      border-radius: 999px;
+      border: 1.5px solid var(--border-soft);
+      background: #fff;
+      color: var(--choco-dark);
+      font-family: inherit;
+      font-weight: 700;
+      font-size: 0.85rem;
+      cursor: pointer;
+    }
+
+    .filter-bar {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding-bottom: 8px;
+      margin-bottom: 14px;
+    }
+
+    .filter-pill {
+      white-space: nowrap;
+      padding: 8px 14px;
+      border-radius: 999px;
+      border: 1.5px solid var(--border-soft);
+      background: #fff;
+      color: var(--choco-dark);
+      font-family: inherit;
+      font-weight: 700;
+      font-size: 0.82rem;
+      cursor: pointer;
+    }
+
+    .filter-pill.active {
+      background: var(--pink-primary);
+      color: #fff;
+      border-color: var(--pink-primary);
+    }
+
+    .order-card {
+      background: var(--card-bg);
+      border: 2px solid var(--border-soft);
+      border-radius: 22px;
+      padding: 18px;
+      margin-bottom: 16px;
+      box-shadow: 0 6px 18px rgba(74, 44, 42, 0.04);
+    }
+
+    .order-top {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      padding-bottom: 12px;
+      border-bottom: 1.5px dashed var(--border-soft);
+      margin-bottom: 12px;
+    }
+
+    .order-num {
+      font-family: 'Fredoka', sans-serif;
+      font-size: 1.15rem;
+      color: var(--pink-primary);
+    }
+
+    .status-badge {
+      background: var(--pink-soft);
+      color: var(--choco-dark);
+      padding: 5px 12px;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      font-weight: 700;
+    }
+
+    .order-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 14px;
+      margin-bottom: 14px;
+    }
+
+    @media (min-width: 680px) {
+      .order-grid {
+        grid-template-columns: 1.1fr 1fr;
+      }
+    }
+
+    .gcash-verify-box {
+      margin-top: 10px;
+      background: #eff6ff;
+      border: 1.5px solid #bfdbfe;
+      border-radius: 14px;
+      padding: 10px 12px;
+    }
+
+    .proof-thumb {
+      display: block;
+      max-width: 140px;
+      max-height: 140px;
+      border-radius: 10px;
+      margin-top: 8px;
+      border: 1.5px solid #93c5fd;
+      object-fit: cover;
+    }
+
+    .actions-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding-top: 10px;
+      border-top: 1.5px dashed var(--border-soft);
+    }
+
+    .act-btn {
+      padding: 9px 13px;
+      border: none;
+      border-radius: 12px;
+      font-family: inherit;
+      font-weight: 700;
+      font-size: 0.82rem;
+      cursor: pointer;
+    }
+
+    .act-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-confirm { background: #dbeafe; color: #1e40af; }
+    .btn-prepare { background: #fef3c7; color: #92400e; }
+    .btn-delivery { background: #e0e7ff; color: #3730a3; }
+    .btn-pickup { background: #f3e8ff; color: #6b21a8; }
+    .btn-complete { background: #dcfce7; color: #166534; }
+    .btn-cancel { background: #fee2e2; color: #991b1b; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>🍡 Mocho Bites — Admin Queue</h1>
+      <p>Manage incoming orders & live customer statuses</p>
+    </header>
+
+    <section id="loginBox" class="login-card">
+      <h2>🔐 Admin Login</h2>
+      <p>Enter your admin password to unlock the order queue.</p>
+      <div id="loginError" class="error-box hidden"></div>
+      <form id="adminLoginForm">
+        <input type="password" id="adminPasswordInput" placeholder="Admin Password" required />
+        <button type="submit" class="primary-btn">Unlock Dashboard →</button>
+      </form>
+    </section>
+
+    <section id="dashboardBox" class="hidden">
+      <div class="top-bar">
+        <div id="orderCountLabel" style="font-weight:700; font-size:0.92rem;">Loading orders...</div>
+        <div class="top-actions">
+          <button id="refreshOrdersBtn" class="pill-btn">🔄 Refresh</button>
+          <button id="logoutBtn" class="pill-btn">🚪 Lock</button>
+        </div>
+      </div>
+
+      <div id="statusFilterBar" class="filter-bar">
+        <button class="filter-pill active" data-filter="ALL">All Orders</button>
+        <button class="filter-pill" data-filter="Pending payment verification">⏳ Pending GCash</button>
+        <button class="filter-pill" data-filter="Order received">📥 Order Received</button>
+        <button class="filter-pill" data-filter="Order confirmed, being prepared">👩‍🍳 Preparing</button>
+        <button class="filter-pill" data-filter="Out for delivery">🛵 Out for Delivery</button>
+        <button class="filter-pill" data-filter="Ready for pickup, waiting for customer">🏫 Ready for Pickup</button>
+        <button class="filter-pill" data-filter="Completed">🎉 Completed</button>
+        <button class="filter-pill" data-filter="Cancelled">✖ Cancelled</button>
+      </div>
+
+      <div id="adminOrdersList"></div>
+    </section>
+  </div>
+
   <script>
     const API_URL = 'https://rdfignbjrceuyiarvuuz.supabase.co/functions/v1/api';
     const SUPABASE_ANON_KEY = 'sb_publishable_airSzEpavYssjD9omk2GDQ_iu-Lz0Z4';
@@ -33,7 +337,6 @@
       return '₱' + Number(val || 0).toFixed(2).replace(/\.00$/, '');
     }
 
-    // Check existing session on load
     if (adminPassword) {
       loadOrders();
     }
@@ -102,7 +405,7 @@
           ? allOrders
           : allOrders.filter((o) => o.status === currentFilter);
 
-      document.getElementById('orderCountLabel').textContent = `Showing ${filtered.length} of${allOrders.length} total orders`;
+      document.getElementById('orderCountLabel').textContent = `Showing ${filtered.length} of ${allOrders.length} total orders`;
 
       const container = document.getElementById('adminOrdersList');
       if (filtered.length === 0) {
@@ -226,10 +529,11 @@
       }
     });
 
-    // Auto-refresh admin queue every 15 seconds
     setInterval(() => {
       if (adminPassword && !dashboardBox.classList.contains('hidden')) {
         loadOrders();
       }
     }, 15000);
   </script>
+</body>
+</html>
