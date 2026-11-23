@@ -1,0 +1,235 @@
+  <script>
+    const API_URL = 'https://rdfignbjrceuyiarvuuz.supabase.co/functions/v1/api';
+    const SUPABASE_ANON_KEY = 'sb_publishable_airSzEpavYssjD9omk2GDQ_iu-Lz0Z4';
+    const SESSION_KEY = 'mocho_admin_pass_session';
+    let adminPassword = sessionStorage.getItem(SESSION_KEY) || '';
+    let allOrders = [];
+    let currentFilter = 'ALL';
+
+    async function callApi(payload) {
+      return fetch(API_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        },
+        body: JSON.stringify(payload),
+      });
+    }
+
+    const loginBox = document.getElementById('loginBox');
+    const dashboardBox = document.getElementById('dashboardBox');
+
+    function escapeHtml(str) {
+      return String(str ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    function formatPeso(val) {
+      return '₱' + Number(val || 0).toFixed(2).replace(/\.00$/, '');
+    }
+
+    // Check existing session on load
+    if (adminPassword) {
+      loadOrders();
+    }
+
+    document.getElementById('adminLoginForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const pass = document.getElementById('adminPasswordInput').value;
+      const errEl = document.getElementById('loginError');
+      errEl.classList.add('hidden');
+
+      try {
+        const res = await callApi({ action: 'adminLogin', password: pass });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Login failed');
+
+        adminPassword = pass;
+        sessionStorage.setItem(SESSION_KEY, pass);
+        loadOrders();
+      } catch (err) {
+        errEl.textContent = err.message;
+        errEl.classList.remove('hidden');
+      }
+    });
+
+    document.getElementById('logoutBtn').addEventListener('click', () => {
+      sessionStorage.removeItem(SESSION_KEY);
+      adminPassword = '';
+      dashboardBox.classList.add('hidden');
+      loginBox.classList.remove('hidden');
+    });
+
+    document.getElementById('refreshOrdersBtn').addEventListener('click', loadOrders);
+
+    async function loadOrders() {
+      try {
+        const res = await callApi({ action: 'adminListOrders', password: adminPassword });
+        const data = await res.json();
+        if (!res.ok) {
+          sessionStorage.removeItem(SESSION_KEY);
+          loginBox.classList.remove('hidden');
+          dashboardBox.classList.add('hidden');
+          return;
+        }
+
+        loginBox.classList.add('hidden');
+        dashboardBox.classList.remove('hidden');
+        allOrders = data.orders || [];
+        renderOrdersList();
+      } catch (err) {
+        alert('Failed to load orders: ' + err.message);
+      }
+    }
+
+    document.getElementById('statusFilterBar').addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-filter]');
+      if (!btn) return;
+      document.querySelectorAll('.filter-pill').forEach((p) => p.classList.remove('active'));
+      btn.classList.add('active');
+      currentFilter = btn.dataset.filter;
+      renderOrdersList();
+    });
+
+    function renderOrdersList() {
+      const filtered =
+        currentFilter === 'ALL'
+          ? allOrders
+          : allOrders.filter((o) => o.status === currentFilter);
+
+      document.getElementById('orderCountLabel').textContent = `Showing ${filtered.length} of${allOrders.length} total orders`;
+
+      const container = document.getElementById('adminOrdersList');
+      if (filtered.length === 0) {
+        container.innerHTML = `<div class="order-card" style="text-align:center; color:var(--text-muted);">No orders in this status yet.</div>`;
+        return;
+      }
+
+      container.innerHTML = filtered
+        .map((order) => {
+          const created = new Date(order.created_at).toLocaleString('en-PH', {
+            month: 'short',
+            day: 'numeric',
+            hour: 'numeric',
+            minute: '2-digit',
+          });
+
+          const itemsHtml = (order.items || [])
+            .map(
+              (item) =>
+                `<div>• <strong>${item.qty}×</strong> ${escapeHtml(item.name)} (${formatPeso(item.subtotal)})</div>`
+            )
+            .join('');
+
+          const gcashSection =
+            order.payment_method === 'gcash'
+              ? `
+                <div class="gcash-verify-box">
+                  <div style="font-weight:700; color:#1e3a8a; font-size:0.86rem;">
+                    📱 GCash Ref #: <span style="font-size:1rem; letter-spacing:0.5px;">${escapeHtml(order.gcash_reference || 'N/A')}</span>
+                  </div>
+                  ${
+                    order.payment_screenshot_url
+                      ? `<a href="${escapeHtml(order.payment_screenshot_url)}" target="_blank" rel="noopener">
+                           <img src="${escapeHtml(order.payment_screenshot_url)}" alt="GCash Proof" class="proof-thumb" />
+                         </a>`
+                      : `<div style="font-size:0.78rem; color:#475569; margin-top:4px;">No screenshot attached</div>`
+                  }
+                </div>`
+              : '';
+
+          return `
+            <article class="order-card">
+              <div class="order-top">
+                <div>
+                  <span class="order-num">${escapeHtml(order.order_number)}</span>
+                  <span style="font-size:0.82rem; color:var(--text-muted); margin-left:8px;">${created}</span>
+                </div>
+                <span class="status-badge">${escapeHtml(order.status)}</span>
+              </div>
+
+              <div class="order-grid">
+                <div>
+                  <div style="font-weight:700; font-size:1rem;">👤 ${escapeHtml(order.customer_name)}</div>
+                  <div style="font-size:0.9rem; margin:2px 0;">📞 <a href="tel:${escapeHtml(order.phone)}">${escapeHtml(order.phone)}</a></div>
+                  <div style="font-size:0.9rem; margin-top:6px;">
+                    <strong>${order.fulfillment_type === 'delivery' ? '🛵 Delivery' : '🏫 Campus Pickup'}:</strong>
+                    ${
+                      order.fulfillment_type === 'delivery'
+                        ? escapeHtml(order.delivery_address)
+                        : 'CTU – Danao Campus'
+                    }
+                  </div>
+                  ${gcashSection}
+                </div>
+
+                <div style="background:#fff9fc; padding:12px; border-radius:16px; border:1.5px solid #ffd6e6;">
+                  <div style="font-weight:700; margin-bottom:6px;">🍡 Items</div>
+                  <div style="font-size:0.88rem; line-height:1.5;">${itemsHtml}</div>
+                  <div style="border-top:1px dashed #f4cfe0; margin-top:8px; padding-top:6px; font-weight:700;">
+                    Total: ${formatPeso(order.total)} (${order.payment_method.toUpperCase()})${order.is_first_order ? '<span style="color:var(--pandan-green); font-size:0.78rem;"> • 1st Order Free Ship</span>' : ''}
+                  </div>
+                </div>
+              </div>
+
+              <div class="actions-row">
+                ${
+                  order.payment_method === 'gcash'
+                    ? `<button class="act-btn btn-confirm" data-oid="${order.id}" data-next="Order confirmed, being prepared">✅ Confirm Payment</button>`
+                    : ''
+                }
+                <button class="act-btn btn-prepare" data-oid="${order.id}" data-next="Order confirmed, being prepared">👩‍🍳 Mark Preparing</button>
+                ${
+                  order.fulfillment_type === 'delivery'
+                    ? `<button class="act-btn btn-delivery" data-oid="${order.id}" data-next="Out for delivery">🛵 Out for Delivery</button>`
+                    : `<button class="act-btn btn-pickup" data-oid="${order.id}" data-next="Ready for pickup, waiting for customer">🏫 Ready for Pickup</button>`
+                }
+                <button class="act-btn btn-complete" data-oid="${order.id}" data-next="Completed">🎉 Complete</button>
+                <button class="act-btn btn-cancel" data-oid="${order.id}" data-next="Cancelled">✖ Cancel</button>
+              </div>
+            </article>`;
+        })
+        .join('');
+    }
+
+    document.getElementById('adminOrdersList').addEventListener('click', async (e) => {
+      const btn = e.target.closest('[data-oid]');
+      if (!btn) return;
+
+      const orderId = btn.dataset.oid;
+      const nextStatus = btn.dataset.next;
+
+      if (nextStatus === 'Cancelled' && !confirm('Are you sure you want to cancel this order?')) {
+        return;
+      }
+
+      btn.disabled = true;
+      try {
+        const res = await callApi({
+          action: 'adminUpdateStatus',
+          password: adminPassword,
+          orderId,
+          status: nextStatus,
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Update failed');
+
+        await loadOrders();
+      } catch (err) {
+        alert('Error updating status: ' + err.message);
+        btn.disabled = false;
+      }
+    });
+
+    // Auto-refresh admin queue every 15 seconds
+    setInterval(() => {
+      if (adminPassword && !dashboardBox.classList.contains('hidden')) {
+        loadOrders();
+      }
+    }, 15000);
+  </script>
